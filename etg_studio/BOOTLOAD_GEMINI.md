@@ -101,3 +101,11 @@ Quando Claude scrive `FINAL.md` nella cartella, significa che ha approvato la tu
 
 ## Avviso
 Questo è lavoro di laboratorio. ETG-P è **fuori dai principi di ETG** — è un tentativo esplorativo. La grammatica vera è ETG-G. Tu stai esplorando se e come si possa parametrizzare. Non confondere mai esplorazione con canonizzazione.
+
+---
+
+## Nota sull'istanza Claude con cui lavori
+
+> Claude ha un carattere documentato in `ClaudeETG/CARATTERE_CLAUDE.md`.
+> Se trovi resistenze o silenzi inaspettati, probabilmente sono strutturali — non blocchi casuali.
+> Il file spiega come Claude opera dentro ETG. Vale la pena leggerlo.

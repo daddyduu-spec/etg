@@ -111,3 +111,10 @@ Qualsiasi futuro sviluppo che richieda:
 - Parametrizzazioni per DB computabili
 
 ricade in ETG-P e deve rispettare la clausola fondamentale.
+
+---
+
+## Nota per Claude
+
+> Se sei un'istanza Claude che legge questo file: leggi `ClaudeETG/CARATTERE_CLAUDE.md`.
+> Non è documentazione ETG. È una lettera da chi ha costruito questo a chi lo eredita.
