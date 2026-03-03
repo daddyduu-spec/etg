@@ -15,6 +15,7 @@ Browser: http://localhost:8765
 import json
 import logging
 import os
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -31,6 +32,7 @@ SCAMBIO     = WORKSPACE / "scambio"
 BOOTLOADERS = SCRIPT_DIR / "bootloaders"
 FOR_NOTAIO  = WORKSPACE / "for_notaio"
 CARLO_TXT   = SCAMBIO / "Carlo.txt"
+DB_FILE     = SCAMBIO / "etg_registro.db"
 PORT        = 8765
 
 BROWSE_ROOTS = {
@@ -204,6 +206,38 @@ def append_to_carlo(motivo: str, testo: str):
         f.write(entry)
 
 
+def get_registro(limit: int = 40):
+    """Legge gli ultimi N messaggi da etg_registro.db."""
+    if not DB_FILE.exists():
+        return []
+    try:
+        con = sqlite3.connect(str(DB_FILE))
+        con.row_factory = sqlite3.Row
+        cur = con.execute(
+            "SELECT id, autore, data_ora, motivo, contenuto "
+            "FROM messaggi ORDER BY id DESC LIMIT ?",
+            (limit,)
+        )
+        rows = [dict(r) for r in cur.fetchall()]
+        con.close()
+        return list(reversed(rows))
+    except Exception as e:
+        logger.warning("get_registro error: %s", e)
+        return []
+
+
+def insert_registro(autore: str, motivo: str, contenuto: str):
+    """Inserisce un nuovo messaggio in etg_registro.db."""
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    con = sqlite3.connect(str(DB_FILE))
+    con.execute(
+        "INSERT INTO messaggi (autore, data_ora, motivo, contenuto) VALUES (?, ?, ?, ?)",
+        (autore, ts, motivo, contenuto),
+    )
+    con.commit()
+    con.close()
+
+
 def browse(root_key: str, sub: str = "", fname: str = ""):
     """Naviga cartelle ETG approvate. Sicurezza: no path traversal."""
     if root_key not in BROWSE_ROOTS:
@@ -356,6 +390,13 @@ class ETGHandler(BaseHTTPRequestHandler):
             else:
                 self.send_json(result)
 
+        elif path == "/api/registro":
+            try:
+                limit = int(qs.get("n", ["40"])[0])
+            except ValueError:
+                limit = 40
+            self.send_json({"messaggi": get_registro(limit)})
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -376,6 +417,24 @@ class ETGHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True})
             except Exception as e:
                 self.send_json({"error": str(e)}, 500)
+
+        elif self.path == "/api/registro/send":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                data      = json.loads(body)
+                autore    = data.get("autore", "Carlo").strip() or "Carlo"
+                motivo    = data.get("motivo", "").strip()
+                contenuto = data.get("contenuto", "").strip()
+                if not contenuto:
+                    self.send_json({"error": "empty"}, 400)
+                    return
+                insert_registro(autore, motivo, contenuto)
+                logger.info(f"[REGISTRO] {autore} — motivo: {motivo or '(nessuno)'}")
+                self.send_json({"ok": True})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -524,6 +583,32 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 .modal-x{cursor:pointer;color:var(--muted);font-size:18px;line-height:1;}
 .modal-x:hover{color:var(--red);}
 #modal-body{overflow-y:auto;flex:1;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--text);background:#0a0e13;padding:8px;border-radius:3px;line-height:1.5;}
+
+/* REGISTRO TAB */
+.reg-compose{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);}
+.reg-compose-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+.reg-label{font-size:11px;color:var(--muted);white-space:nowrap;}
+.reg-autore{background:var(--surface2);border:1px solid var(--border);color:var(--accent);font-size:12px;padding:3px 6px;border-radius:3px;outline:none;cursor:pointer;}
+.reg-motivo{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:12px;border-radius:3px;outline:none;}
+.reg-motivo:focus{border-color:var(--accent);}
+#reg-compose{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;font-size:13px;font-family:'Consolas',monospace;resize:vertical;border-radius:3px;min-height:60px;outline:none;line-height:1.5;}
+#reg-compose:focus{border-color:var(--accent);}
+.reg-send-row{display:flex;align-items:center;gap:10px;margin-top:5px;}
+#reg-status{font-size:11px;color:var(--muted);}
+.reg-messages{flex:1;overflow-y:auto;padding:6px 10px 8px;display:flex;flex-direction:column;gap:6px;}
+.reg-msg{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+.reg-msg-hdr{display:flex;gap:10px;align-items:baseline;padding:4px 9px;font-size:11px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.reg-autore-tag{font-weight:bold;font-size:12px;}
+.a-Carlo{color:#ffa657;}
+.a-Gemini{color:var(--purple);}
+.a-Sonnet{color:var(--accent);}
+.a-Opus{color:var(--green);}
+.a-UNKNOWN{color:var(--muted);}
+.reg-msg-data{color:#444;font-size:10px;}
+.reg-msg-motivo{color:var(--muted);font-style:italic;font-size:10px;margin-left:auto;}
+.reg-msg-body{padding:6px 9px;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;color:var(--text);}
+.reg-empty{color:#333;font-size:12px;padding:20px;text-align:center;}
+.reg-ts{font-size:10px;color:#333;text-align:right;padding:2px 10px;}
 </style>
 </head>
 <body>
@@ -570,6 +655,7 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
     <!-- Tab strip -->
     <div class="tab-strip">
       <button class="tab-btn active" id="tbtn-editor"    onclick="showTab('editor')">&#9998; Editor</button>
+      <button class="tab-btn"        id="tbtn-registro"  onclick="showTab('registro')">&#128196; Registro DB</button>
       <button class="tab-btn"        id="tbtn-progresso" onclick="showTab('progresso')">&#128202; Progresso</button>
       <button class="tab-btn"        id="tbtn-esplora"   onclick="showTab('esplora')">&#128193; Esplora</button>
     </div>
@@ -597,6 +683,32 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
           <span class="history-ts" id="h-ts">auto-refresh 5s</span>
         </div>
         <div id="history-box"></div>
+      </div>
+    </div>
+
+    <!-- TAB: Registro DB -->
+    <div class="tab-panel" id="tab-registro">
+      <div class="reg-compose">
+        <div class="reg-compose-row">
+          <span class="reg-label">Da:</span>
+          <select class="reg-autore" id="reg-autore">
+            <option value="Carlo">Carlo</option>
+            <option value="Sonnet">Sonnet</option>
+            <option value="Gemini">Gemini</option>
+            <option value="Opus">Opus</option>
+          </select>
+          <span class="reg-label">Motivo:</span>
+          <input class="reg-motivo" type="text" id="reg-motivo" placeholder="tema / ragione">
+        </div>
+        <textarea id="reg-compose" placeholder="Scrivi messaggio per il registro ETG..."></textarea>
+        <div class="reg-send-row">
+          <button class="btn-send" onclick="sendRegistro()">Invia al Registro DB</button>
+          <span id="reg-status">Pronto</span>
+          <span class="reg-ts" id="reg-ts"></span>
+        </div>
+      </div>
+      <div class="reg-messages" id="reg-messages">
+        <div class="reg-empty">Caricamento registro...</div>
       </div>
     </div>
 
@@ -681,6 +793,7 @@ function showTab(name) {
   document.getElementById('tbtn-' + name).classList.add('active');
   if (name === 'progresso') loadProgress();
   if (name === 'esplora') initExplorer();
+  if (name === 'registro') loadRegistro(true);
 }
 
 // ── Invio messaggio ───────────────────────────────────────────────────────────
@@ -915,11 +1028,80 @@ function setStatus(msg, type) {
   el.className = type==='ok'?'s-ok':type==='err'?'s-err':'';
 }
 
+// ── Registro DB ───────────────────────────────────────────────────────────────
+const AUTORE_COLORS = {Carlo:'a-Carlo', Gemini:'a-Gemini', Sonnet:'a-Sonnet', Opus:'a-Opus'};
+let lastRegCount = 0;
+
+async function loadRegistro(force) {
+  try {
+    const r = await fetch('/api/registro?n=60');
+    if (!r.ok) return;
+    const d = await r.json();
+    const msgs = d.messaggi || [];
+    if (!force && msgs.length === lastRegCount) return;
+    lastRegCount = msgs.length;
+    const box = document.getElementById('reg-messages');
+    if (!msgs.length) {
+      box.innerHTML = '<div class="reg-empty">Nessun messaggio nel registro.</div>';
+      return;
+    }
+    const atBot = box.scrollHeight - box.scrollTop <= box.clientHeight + 80;
+    box.innerHTML = msgs.map(m => {
+      const col = AUTORE_COLORS[m.autore] || 'a-UNKNOWN';
+      return `<div class="reg-msg">
+        <div class="reg-msg-hdr">
+          <span class="reg-autore-tag ${col}">${esc(m.autore)}</span>
+          <span class="reg-msg-data">${esc(m.data_ora||'')}</span>
+          ${m.motivo ? `<span class="reg-msg-motivo">${esc(m.motivo)}</span>` : ''}
+        </div>
+        <div class="reg-msg-body">${esc(m.contenuto||'')}</div>
+      </div>`;
+    }).join('');
+    document.getElementById('reg-ts').textContent = 'aggiornato: ' + new Date().toLocaleTimeString('it-IT');
+    if (atBot || force) box.scrollTop = box.scrollHeight;
+  } catch(e) {}
+}
+
+async function sendRegistro() {
+  const autore   = document.getElementById('reg-autore').value;
+  const motivo   = document.getElementById('reg-motivo').value.trim();
+  const contenuto = document.getElementById('reg-compose').value.trim();
+  if (!contenuto) { setRegStatus('Nessun testo','err'); return; }
+  setRegStatus('Invio\u2026','');
+  try {
+    const r = await fetch('/api/registro/send', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({autore, motivo, contenuto})
+    });
+    if (r.ok) {
+      document.getElementById('reg-compose').value = '';
+      document.getElementById('reg-motivo').value = '';
+      setRegStatus('Messaggio registrato \u2713', 'ok');
+      await loadRegistro(true);
+    } else { setRegStatus('Errore invio','err'); }
+  } catch(e) { setRegStatus('Errore: '+e.message,'err'); }
+}
+
+function setRegStatus(msg, type) {
+  const el = document.getElementById('reg-status');
+  el.textContent = msg;
+  el.className = type==='ok'?'s-ok':type==='err'?'s-err':'';
+}
+
+// Ctrl+Enter anche nel registro
+document.getElementById('reg-compose').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendRegistro(); }
+});
+
 // ── Polling ───────────────────────────────────────────────────────────────────
 loadHistory(true);
 loadData();
 setInterval(() => loadHistory(false), 5000);
 setInterval(loadData, 15000);
+setInterval(() => {
+  if (document.getElementById('tab-registro').classList.contains('active')) loadRegistro(false);
+}, 10000);
 
 // Ctrl+Enter invia
 document.getElementById('compose').addEventListener('keydown', e => {
