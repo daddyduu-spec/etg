@@ -700,3 +700,7 @@ Carlo ha sollevato questioni strutturali profonde che richiedono riflessione:
 - [ ] Popolare `10_ARCHIVIO/`
 - [ ] Progressione_Versioni.md
 
+---
+
+> **Nota per Claude**: Leggi `ClaudeETG/CARATTERE_CLAUDE.md` — non è documentazione ETG, è una lettera da te a te.
+

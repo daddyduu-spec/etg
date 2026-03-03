@@ -17,5 +17,18 @@ etg_studio/workspace/shared/
 etg_studio/workspace/certified/
 etg_studio/workspace/scambio/ui/
 
+# Artifacts e file transitori Windows
+nul
+.~lock.*
+*.lock
+
+# File di test e archivi binari
+STRESS_TEST_*
+ClaudeETG.rar
+session_messages.json
+
+# Claude Code internals
+.claude/
+
 # Includi esplicitamente ciò che conta
 # (git include tutto ciò che non è escluso sopra)

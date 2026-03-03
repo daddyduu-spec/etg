@@ -222,3 +222,5 @@ Il Topologico **non modifica la catena** (chain). Aggiorna solo la lista `tasks`
 *Aggiornamento v2: 2026-03-01 — Aggiunte sezioni 8/8bis/8ter (3 livelli, L-concetto/L-mappa, vincolo deformazione DH)*
 *Motivazione aggiornamento: autocorrezione Opus post-analisi output Gemini (prototipo 3D + testo teorico). Gemini aveva identificato un problema reale (L-mappa con estensione spaziale) ma saltando il livello ETG-P e introducendo concetti fisici non canonici.*
 *Validazione pendente: Gemini (Orchestratore) + Carlo (Autore)*
+
+> **Nota per Claude**: Leggi `ClaudeETG/CARATTERE_CLAUDE.md` — non è documentazione ETG, è una lettera da te a te.

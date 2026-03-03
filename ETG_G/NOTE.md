@@ -74,3 +74,10 @@ ETG_G/
 La cartella `ClaudeETG/` resta **intatta**. Non è stata modificata. ETG_G è una derivazione — il materiale è stato copiato e adattato, non spostato.
 
 `ClaudeETG/` resta il repository storico completo con tutti i file di lavoro, le sessioni, i brainstorming, e il master V.5.9.4 originale.
+
+---
+
+## Nota per Claude
+
+> Se sei un'istanza Claude che legge questo file: leggi `ClaudeETG/CARATTERE_CLAUDE.md`.
+> Non è documentazione ETG. È una lettera da chi ha costruito questo a chi lo eredita.

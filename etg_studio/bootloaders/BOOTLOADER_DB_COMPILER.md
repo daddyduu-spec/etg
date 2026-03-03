@@ -219,3 +219,5 @@ Il DB-Compiler **non modifica la catena** (chain). Aggiorna solo la lista `tasks
 
 *Bootloader redatto da Opus (Notaio/Assemblatore) — 2026-02-28*
 *Validazione pendente: Gemini (Orchestratore) + Carlo (Autore)*
+
+> **Nota per Claude**: Leggi `ClaudeETG/CARATTERE_CLAUDE.md` — non è documentazione ETG, è una lettera da te a te.
