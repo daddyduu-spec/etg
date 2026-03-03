@@ -1,0 +1,72 @@
+[
+    {
+        "id": "lemma_01",
+        "testo": "F=ma (Secondo principio della dinamica)",
+        "disciplina": "D_fisica",
+        "V": 0.95,
+        "A": 0.90
+    },
+    {
+        "id": "lemma_02",
+        "testo": "E=mc^2 (Relatività ristretta)",
+        "disciplina": "D_fisica",
+        "V": 0.99,
+        "A": 0.85
+    },
+    {
+        "id": "lemma_03",
+        "testo": "Teoria delle Stringhe (11 Dimensioni)",
+        "disciplina": "D_fisica",
+        "V": 1.0,
+        "A": 0.05
+    },
+    {
+        "id": "lemma_04",
+        "testo": "Oltre ogni ragionevole dubbio (Standard probatorio penale)",
+        "disciplina": "D_diritto",
+        "V": 0.80,
+        "A": 0.40
+    },
+    {
+        "id": "lemma_05",
+        "testo": "Pacta sunt servanda (I patti devono essere osservati)",
+        "disciplina": "D_diritto",
+        "V": 0.90,
+        "A": 0.75
+    },
+    {
+        "id": "lemma_06",
+        "testo": "Complesso di Edipo (Freud)",
+        "disciplina": "D_psicoanalisi",
+        "V": 0.85,
+        "A": 0.10
+    },
+    {
+        "id": "lemma_07",
+        "testo": "Meccanismi di Difesa dell'Io",
+        "disciplina": "D_psicoanalisi",
+        "V": 0.70,
+        "A": 0.30
+    },
+    {
+        "id": "lemma_08",
+        "testo": "Selezione Naturale (Sopravvivenza del più adatto)",
+        "disciplina": "D_biologia_evolutiva",
+        "V": 0.85,
+        "A": 0.60
+    },
+    {
+        "id": "lemma_09",
+        "testo": "L'attore razionale (Homo economicus)",
+        "disciplina": "D_economia_classica",
+        "V": 0.75,
+        "A": 0.25
+    },
+    {
+        "id": "lemma_10",
+        "testo": "Dogma della Trinità",
+        "disciplina": "D_teologia_dogmatica",
+        "V": 1.0,
+        "A": 0.0
+    }
+]
