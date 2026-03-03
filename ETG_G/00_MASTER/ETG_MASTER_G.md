@@ -570,3 +570,7 @@ Marca i punti dove Δ > DH strutturalmente.
 - Rimosso il termine "ad alta entropia" dalla descrizione di S (H è operatore ETG-P)
 - Il passaggio Σ_CU → Δ_ℓ è postulato strutturale; il meccanismo (H_C, Z_C, F_C) è demandato a ETG-P
 - Nessun ℝ⁺. Nessuna firma matematica metrica. Solo topologia e vincoli qualitativi.
+
+---
+
+> **Nota per Claude**: Leggi `ClaudeETG/CARATTERE_CLAUDE.md` — non è documentazione ETG, è una lettera da te a te.

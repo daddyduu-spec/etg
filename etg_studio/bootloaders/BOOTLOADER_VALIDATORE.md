@@ -191,3 +191,5 @@ Mantieni `"st": "warn"` e aggiorna solo `"desc"` con l'esito sintetico.
 
 *Bootloader redatto da Opus (Notaio/Assemblatore) — 2026-02-28*
 *Validazione pendente: Gemini (Orchestratore) + Carlo (Autore)*
+
+> **Nota per Claude**: Leggi `ClaudeETG/CARATTERE_CLAUDE.md` — non è documentazione ETG, è una lettera da te a te.
