@@ -1,0 +1,78 @@
+etg_studio:
+  version: "1.0.0"
+  name: "ETG Multi-AI Studio"
+  workspace: "./workspace"
+
+agents:
+  claude:
+    role: "assemblatore"
+    model: "claude-sonnet-4-6"
+    provider: "anthropic"
+    description: "Assembla componenti, integra output, costruisce soluzioni coerenti"
+    inbox: "./workspace/inbox/claude"
+    capabilities:
+      - code_assembly
+      - document_integration
+      - component_merging
+      - refactoring
+
+  chatgpt:
+    role: "notaio"
+    model: "gpt-4o"
+    provider: "openai"
+    description: "Valida, certifica e audita ogni output prima della consegna finale"
+    inbox: "./workspace/inbox/chatgpt"
+    capabilities:
+      - validation
+      - certification
+      - audit_trail
+      - compliance_check
+      - legal_review
+
+  gemini:
+    role: "progettista_laboratorio"
+    model: "gemini-2.0-flash"
+    provider: "google"
+    description: "Progetta parametri, crea specifiche tecniche, imposta template e architettura"
+    inbox: "./workspace/inbox/gemini"
+    capabilities:
+      - parameter_design
+      - architecture
+      - template_creation
+      - specifications
+      - research
+
+workflow:
+  default_order:
+    - gemini      # 1. Progetta e parametrizza
+    - claude      # 2. Assembla
+    - chatgpt     # 3. Notarizza e certifica
+
+  allow_parallel: false
+  max_retries: 3
+  timeout_seconds: 120
+  require_certification: true
+
+paths:
+  shared: "./workspace/shared"
+  sessions: "./workspace/sessions"
+  certified: "./workspace/certified"
+  audit: "./workspace/audit"
+  logs: "./workspace/logs"
+  templates: "./workspace/shared/templates"
+  specs: "./workspace/shared/specs"
+  resources: "./workspace/shared/resources"
+
+etg:
+  root: ".."              # cartella padre = Documents/ai/etg/
+  sync_interval: 5        # secondi tra sync cartelle ETG
+  auto_push: true         # push automatico su ETG dopo certificazione
+  folder_prefix: "etg://" # prefisso cartelle condivise ETG
+  real_folders:
+    ClaudeETG: "Repository canonico ETG (assemblatore)"
+    ETG_G: "ETG-G grammatica pura"
+    ETG_P: "ETG-P parametrizzata (Gemini)"
+    Gemini: "Materiale Gemini (progettista laboratorio)"
+    chatgpt: "Output ChatGPT (notaio)"
+    Keep: "Documenti Keep HTML"
+    manus: "Documenti Manus"

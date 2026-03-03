@@ -1,0 +1,68 @@
+{
+  "chain": [
+    {
+      "id": "H_C",
+      "st": "ok",
+      "desc": "Shannon | D — approvata SESSION_002"
+    },
+    {
+      "id": "Z_C",
+      "st": "ok",
+      "desc": "H_C/(DH_D\u2212H_C) — approvata SESSION_003"
+    },
+    {
+      "id": "F_C",
+      "st": "warn",
+      "desc": "Z_C\u00b2\u00b7DH_D/DH_\u2113 — candidata SESSION_008"
+    },
+    {
+      "id": "\u0394_\u2113",
+      "st": "pending",
+      "desc": "Attende F_C definitiva"
+    }
+  ],
+  "tasks": [
+    {
+      "text": "Notarizzare SESSION_002/003/004",
+      "p": "ALTA",
+      "who": "Carlo \u2192 Opus"
+    },
+    {
+      "text": "F_C derivazione (\u0394 decomp, DH relazione, \u03b1\u22602)",
+      "p": "ALTA",
+      "who": "Ag. Matematico"
+    },
+    {
+      "text": "Verdict VOCABOLARIO v1.4",
+      "p": "MEDIA",
+      "who": "Carlo"
+    },
+    {
+      "text": "Vocab: alfa / \u039b / \u0393 / nome spazio sopra L",
+      "p": "MEDIA",
+      "who": "Carlo"
+    },
+    {
+      "text": "3 frasi ETG master (post-vocab)",
+      "p": "MEDIA",
+      "who": "Post-vocab"
+    },
+    {
+      "text": "etg_db_manager.py",
+      "p": "BASSA",
+      "who": "Ag. DB-Compiler"
+    },
+    {
+      "text": "Sviluppo ETG-Scrubber (Pipeline Pulizia Modelli)",
+      "p": "ALTA",
+      "who": "Gemini (Antigravity)"
+    },
+    {
+      "text": "Integrazione ETG-RAG (Vector DB Memory)",
+      "p": "ALTA",
+      "who": "Orchestratore"
+    }
+  ],
+  "updated": "2026-03-02",
+  "updated_by": "Antigravity (Gemini)"
+}

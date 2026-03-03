@@ -1,0 +1,21 @@
+# Archivi sorgente — grandi, privati, non toccare
+Keep/
+manus/
+chatgpt/
+
+# Runtime e credenziali
+.env
+__pycache__/
+*.pyc
+*.pyo
+
+# Workspace runtime (escludi inbox e dati transitori)
+etg_studio/workspace/inbox/
+etg_studio/workspace/logs/
+etg_studio/workspace/sessions/
+etg_studio/workspace/shared/
+etg_studio/workspace/certified/
+etg_studio/workspace/scambio/ui/
+
+# Includi esplicitamente ciò che conta
+# (git include tutto ciò che non è escluso sopra)
