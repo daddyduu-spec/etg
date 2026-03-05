@@ -19,6 +19,7 @@ import sqlite3
 import subprocess
 import sys
 import threading
+import time
 import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -219,23 +220,28 @@ def get_registro(limit: int = 40):
             (limit,)
         )
         rows = [dict(r) for r in cur.fetchall()]
-        con.close()
-        return list(reversed(rows))
     except Exception as e:
         logger.warning("get_registro error: %s", e)
-        return []
+        rows = []
+    finally:
+        if 'con' in locals():
+            con.close()
+    return list(reversed(rows))
 
 
 def insert_registro(autore: str, motivo: str, contenuto: str):
     """Inserisce un nuovo messaggio in etg_registro.db."""
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    con = sqlite3.connect(str(DB_FILE))
-    con.execute(
-        "INSERT INTO messaggi (autore, data_ora, motivo, contenuto) VALUES (?, ?, ?, ?)",
-        (autore, ts, motivo, contenuto),
-    )
-    con.commit()
-    con.close()
+    try:
+        con = sqlite3.connect(str(DB_FILE))
+        con.execute(
+            "INSERT INTO messaggi (autore, data_ora, motivo, contenuto) VALUES (?, ?, ?, ?)",
+            (autore, ts, motivo, contenuto),
+        )
+        con.commit()
+    finally:
+        if 'con' in locals():
+            con.close()
 
 
 def browse(root_key: str, sub: str = "", fname: str = ""):
@@ -397,6 +403,9 @@ class ETGHandler(BaseHTTPRequestHandler):
                 limit = 40
             self.send_json({"messaggi": get_registro(limit)})
 
+        elif path == "/log_viewer":
+            self.send_html(render_log_viewer_html())
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -459,8 +468,8 @@ def render_html() -> str:
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;--text:#c9d1d9;--muted:#8b949e;--accent:#58a6ff;--green:#3fb950;--yellow:#d29922;--red:#f85149;--purple:#bc8cff;}
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-size:13px;}
+html,body{height:100%;max-width:100vw;overflow:hidden;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-size:13px;word-break:break-word;overflow-wrap:break-word;}
 
 /* HEADER */
 header{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 14px;display:flex;align-items:center;gap:16px;flex-shrink:0;}
@@ -470,10 +479,10 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 #last-refresh{font-size:10px;color:#444;}
 
 /* LAYOUT */
-.layout{display:flex;flex:1;overflow:hidden;}
+.layout{display:flex;flex:1;overflow:hidden;width:100%;}
 
 /* SIDEBAR */
-.sidebar{width:190px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:8px 6px;gap:2px;}
+.sidebar{width:190px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;padding:8px 6px;gap:2px;}
 .sb-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#444;padding:6px 4px 2px;}
 .agent-item{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:3px;}
 .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
@@ -483,7 +492,7 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 .sb-btn:hover{background:#2d333b;border-color:var(--accent);color:var(--accent);}
 .sb-btn-notaio{border-color:var(--yellow)!important;color:var(--yellow)!important;}
 .sb-btn-notaio:hover{background:#2d333b;color:var(--yellow);}
-.session-item{font-size:11px;padding:2px 4px;color:var(--muted);line-height:1.4;}
+.session-item{font-size:11px;padding:2px 4px;color:var(--muted);line-height:1.4;word-break:break-word;}
 .inbox-row{display:flex;flex-wrap:wrap;gap:3px;padding:2px 0;}
 .ib{font-size:10px;padding:1px 6px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);}
 .ib.has{border-color:var(--yellow);color:var(--yellow);}
@@ -493,13 +502,13 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 
 /* TAB STRIP */
-.tab-strip{background:var(--surface);border-bottom:1px solid var(--border);display:flex;flex-shrink:0;}
+.tab-strip{background:var(--surface);border-bottom:1px solid var(--border);display:flex;flex-shrink:0;flex-wrap:wrap;}
 .tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:13px;padding:8px 18px;cursor:pointer;transition:color .15s;}
-.tab-btn:hover{color:var(--text);}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover{color:var(--text);}
 
 /* TAB PANELS */
-.tab-panel{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.tab-panel{display:none;flex:1;flex-direction:column;overflow:hidden;min-width:0;width:100%;}
 .tab-panel.active{display:flex;}
 
 /* SYMBOLS */
@@ -513,13 +522,13 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 
 /* EDITOR */
 .editor{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);}
-.motivo-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.motivo-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;}
 .motivo-label{font-size:11px;color:var(--muted);white-space:nowrap;}
-.motivo-input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:12px;border-radius:3px;outline:none;}
+.motivo-input{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:12px;border-radius:3px;outline:none;min-width:100px;}
 .motivo-input:focus{border-color:var(--accent);}
-#compose{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;font-size:13px;font-family:'Consolas',monospace;resize:vertical;border-radius:3px;min-height:75px;outline:none;line-height:1.5;}
+#compose{width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;font-size:13px;font-family:'Consolas',monospace;resize:vertical;border-radius:3px;min-height:75px;outline:none;line-height:1.5;}
 #compose:focus{border-color:var(--accent);}
-.send-row{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.send-row{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;}
 .btn-send{background:var(--accent);border:none;color:#000;font-size:13px;font-weight:600;padding:6px 18px;cursor:pointer;border-radius:4px;flex-shrink:0;}
 .btn-send:hover{opacity:.85;}
 #status{font-size:11px;color:var(--muted);}
@@ -527,15 +536,15 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 .s-err{color:var(--red)!important;}
 
 /* HISTORY */
-.history{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:6px 10px 8px;}
-.history-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;flex-shrink:0;}
+.history{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:6px 10px 8px;min-width:0;width:100%;}
+.history-hdr{display:flex;align-items:baseline;gap:10px;margin-bottom:4px;flex-shrink:0;flex-wrap:wrap;}
 .history-hdr h4{font-size:12px;color:var(--accent);}
 .history-ts{font-size:10px;color:#444;}
-#history-box{flex:1;overflow-y:auto;background:#0a0e13;border:1px solid var(--border);padding:8px 10px;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;border-radius:3px;line-height:1.5;}
+#history-box{flex:1;overflow-y:auto;overflow-x:hidden;background:#0a0e13;border:1px solid var(--border);padding:8px 10px;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;border-radius:3px;line-height:1.5;width:100%;box-sizing:border-box;}
 
 /* PROGRESS TAB */
 .chain-row{display:flex;align-items:flex-start;gap:6px;padding:14px;flex-wrap:wrap;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
-.cbox{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 11px;text-align:center;min-width:58px;}
+.cbox{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:7px 11px;text-align:center;min-width:58px;max-width:120px;word-break:break-word;}
 .cbox.ok{border-color:var(--green);}
 .cbox.warn{border-color:var(--yellow);}
 .cbox.pending{border-color:#333;}
@@ -547,13 +556,13 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 .carr{color:#333;font-size:22px;align-self:center;}
 .psec{padding:10px 14px;border-bottom:1px solid var(--border);overflow-y:auto;}
 .psec h4{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#444;margin-bottom:6px;}
-.srow{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;}
+.srow{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:12px;flex-wrap:wrap;}
 .badge{font-size:10px;padding:1px 7px;border-radius:10px;border:1px solid;}
 .b-ok{border-color:var(--green);color:var(--green);}
 .b-warn{border-color:var(--yellow);color:var(--yellow);}
 .b-err{border-color:var(--red);color:var(--red);}
 .b-idle{border-color:#444;color:#555;}
-.trow{display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:12px;}
+.trow{display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:12px;flex-wrap:wrap;}
 .palta{color:var(--red);font-size:10px;font-weight:bold;flex-shrink:0;min-width:36px;}
 .pmedia{color:var(--yellow);font-size:10px;flex-shrink:0;min-width:36px;}
 .twho{color:var(--muted);font-size:10px;margin-left:auto;}
@@ -561,14 +570,14 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 #prog-tasks-wrap h4{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#444;margin-bottom:6px;}
 
 /* EXPLORER TAB */
-.explorer{display:flex;flex:1;overflow:hidden;}
-.exp-roots{width:132px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:6px 4px;background:var(--surface);}
-.exp-root-btn{display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:5px 8px;margin-bottom:3px;cursor:pointer;border-radius:3px;font-family:monospace;}
+.explorer{display:flex;flex:1;overflow:hidden;width:100%;}
+.exp-roots{width:132px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;padding:6px 4px;background:var(--surface);}
+.exp-root-btn{display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:5px 8px;margin-bottom:3px;cursor:pointer;border-radius:3px;font-family:monospace;word-break:break-all;}
 .exp-root-btn:hover,.exp-root-btn.sel{background:#2d333b;border-color:var(--accent);color:var(--accent);}
-.exp-content{flex:1;overflow-y:auto;padding:0;}
-.exp-breadcrumb{font-size:11px;color:#444;padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;background:var(--surface);flex-shrink:0;}
+.exp-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:0;min-width:0;}
+.exp-breadcrumb{font-size:11px;color:#444;padding:5px 10px;border-bottom:1px solid var(--border);font-family:monospace;background:var(--surface);flex-shrink:0;word-break:break-all;}
 .exp-list{padding:4px 6px;}
-.exp-dir,.exp-file{padding:3px 8px;font-size:12px;cursor:pointer;border-radius:2px;font-family:monospace;}
+.exp-dir,.exp-file{display:block;padding:3px 8px;font-size:12px;cursor:pointer;border-radius:2px;font-family:monospace;word-break:break-all;}
 .exp-dir{color:var(--accent);}
 .exp-file{color:var(--muted);}
 .exp-dir:hover,.exp-file:hover{background:var(--surface2);color:var(--text);}
@@ -577,27 +586,27 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;}
 .overlay.open{display:flex;}
-.modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;width:72%;max-height:82vh;display:flex;flex-direction:column;padding:14px 16px;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:6px;width:72%;max-height:82vh;display:flex;flex-direction:column;padding:14px 16px;min-width:0;max-width:100%;}
 .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.modal-title{color:var(--accent);font-size:13px;font-family:monospace;}
+.modal-title{color:var(--accent);font-size:13px;font-family:monospace;word-break:break-all;}
 .modal-x{cursor:pointer;color:var(--muted);font-size:18px;line-height:1;}
 .modal-x:hover{color:var(--red);}
-#modal-body{overflow-y:auto;flex:1;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--text);background:#0a0e13;padding:8px;border-radius:3px;line-height:1.5;}
+#modal-body{overflow-y:auto;overflow-x:hidden;flex:1;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;color:var(--text);background:#0a0e13;padding:8px;border-radius:3px;line-height:1.5;width:100%;box-sizing:border-box;}
 
 /* REGISTRO TAB */
 .reg-compose{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg);}
-.reg-compose-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+.reg-compose-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;flex-wrap:wrap;}
 .reg-label{font-size:11px;color:var(--muted);white-space:nowrap;}
 .reg-autore{background:var(--surface2);border:1px solid var(--border);color:var(--accent);font-size:12px;padding:3px 6px;border-radius:3px;outline:none;cursor:pointer;}
-.reg-motivo{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:12px;border-radius:3px;outline:none;}
+.reg-motivo{flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:12px;border-radius:3px;outline:none;min-width:100px;}
 .reg-motivo:focus{border-color:var(--accent);}
-#reg-compose{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;font-size:13px;font-family:'Consolas',monospace;resize:vertical;border-radius:3px;min-height:60px;outline:none;line-height:1.5;}
+#reg-compose{width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;font-size:13px;font-family:'Consolas',monospace;resize:vertical;border-radius:3px;min-height:60px;outline:none;line-height:1.5;}
 #reg-compose:focus{border-color:var(--accent);}
-.reg-send-row{display:flex;align-items:center;gap:10px;margin-top:5px;}
+.reg-send-row{display:flex;align-items:center;gap:10px;margin-top:5px;flex-wrap:wrap;}
 #reg-status{font-size:11px;color:var(--muted);}
-.reg-messages{flex:1;overflow-y:auto;padding:6px 10px 8px;display:flex;flex-direction:column;gap:6px;}
-.reg-msg{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
-.reg-msg-hdr{display:flex;gap:10px;align-items:baseline;padding:4px 9px;font-size:11px;background:var(--surface2);border-bottom:1px solid var(--border);}
+.reg-messages{flex:1;overflow-y:auto;overflow-x:hidden;padding:6px 10px 8px;display:block;min-height:0;width:100%;box-sizing:border-box;}
+.reg-msg{background:var(--surface);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-bottom:6px;width:100%;box-sizing:border-box;}
+.reg-msg-hdr{display:flex;gap:10px;align-items:baseline;padding:4px 9px;font-size:11px;background:var(--surface2);border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .reg-autore-tag{font-weight:bold;font-size:12px;}
 .a-Carlo{color:#ffa657;}
 .a-Gemini{color:var(--purple);}
@@ -605,8 +614,9 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
 .a-Opus{color:var(--green);}
 .a-UNKNOWN{color:var(--muted);}
 .reg-msg-data{color:#444;font-size:10px;}
-.reg-msg-motivo{color:var(--muted);font-style:italic;font-size:10px;margin-left:auto;}
-.reg-msg-body{padding:6px 9px;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;color:var(--text);}
+.reg-msg-motivo{color:var(--muted);font-style:italic;font-size:10px;margin-left:auto;word-wrap:break-word;overflow-wrap:break-word;word-break:break-all;}
+.reg-msg-body{padding:6px 9px;font-family:'Consolas',monospace;font-size:12px;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;line-height:1.5;color:var(--text);min-height:64px;width:100%;box-sizing:border-box;}
+.reg-msg-body.empty{color:#333;font-style:italic;}
 .reg-empty{color:#333;font-size:12px;padding:20px;text-align:center;}
 .reg-ts{font-size:10px;color:#333;text-align:right;padding:2px 10px;}
 </style>
@@ -707,9 +717,7 @@ header h1{font-size:15px;color:var(--accent);letter-spacing:.5px;}
           <span class="reg-ts" id="reg-ts"></span>
         </div>
       </div>
-      <div class="reg-messages" id="reg-messages">
-        <div class="reg-empty">Caricamento registro...</div>
-      </div>
+      <iframe src="/log_viewer" class="reg-messages" style="border:none;"></iframe>
     </div>
 
     <!-- TAB: Progresso -->
@@ -1033,33 +1041,14 @@ const AUTORE_COLORS = {Carlo:'a-Carlo', Gemini:'a-Gemini', Sonnet:'a-Sonnet', Op
 let lastRegCount = 0;
 
 async function loadRegistro(force) {
-  try {
-    const r = await fetch('/api/registro?n=60');
-    if (!r.ok) return;
-    const d = await r.json();
-    const msgs = d.messaggi || [];
-    if (!force && msgs.length === lastRegCount) return;
-    lastRegCount = msgs.length;
-    const box = document.getElementById('reg-messages');
-    if (!msgs.length) {
-      box.innerHTML = '<div class="reg-empty">Nessun messaggio nel registro.</div>';
-      return;
+  // L'iframe /log_viewer gestisce il proprio rendering e polling.
+  // Qui deleghiamo: se force, chiediamo all'iframe di ricaricare.
+  if (force) {
+    const iframe = document.getElementById('reg-messages');
+    if (iframe && iframe.contentWindow && typeof iframe.contentWindow.fetchLogs === 'function') {
+      iframe.contentWindow.fetchLogs(true);
     }
-    const atBot = box.scrollHeight - box.scrollTop <= box.clientHeight + 80;
-    box.innerHTML = msgs.map(m => {
-      const col = AUTORE_COLORS[m.autore] || 'a-UNKNOWN';
-      return `<div class="reg-msg">
-        <div class="reg-msg-hdr">
-          <span class="reg-autore-tag ${col}">${esc(m.autore)}</span>
-          <span class="reg-msg-data">${esc(m.data_ora||'')}</span>
-          ${m.motivo ? `<span class="reg-msg-motivo">${esc(m.motivo)}</span>` : ''}
-        </div>
-        <div class="reg-msg-body">${esc(m.contenuto||'')}</div>
-      </div>`;
-    }).join('');
-    document.getElementById('reg-ts').textContent = 'aggiornato: ' + new Date().toLocaleTimeString('it-IT');
-    if (atBot || force) box.scrollTop = box.scrollHeight;
-  } catch(e) {}
+  }
 }
 
 async function sendRegistro() {
@@ -1099,15 +1088,266 @@ loadHistory(true);
 loadData();
 setInterval(() => loadHistory(false), 5000);
 setInterval(loadData, 15000);
-setInterval(() => {
-  if (document.getElementById('tab-registro').classList.contains('active')) loadRegistro(false);
-}, 10000);
 
 // Ctrl+Enter invia
 document.getElementById('compose').addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendMsg(); }
 });
 </script>
+</body>
+</html>"""
+
+
+# ── HTML Log Viewer ─────────────────────────────────────────────────────────────
+
+def render_log_viewer_html() -> str:
+    return r"""<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>ETG SQLite Log Viewer</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #1e1e1e;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --accent: #58a6ff;
+      --Carlo: #ffa657;
+      --Gemini: #bc8cff;
+      --Sonnet: #58a6ff;
+      --Opus: #3fb950;
+      --System: #8b949e;
+    }
+
+    body {
+      margin: 0;
+      padding: 10px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    h1 { display: none; } /* Nascosto perché lo ospitiamo in un iframe */
+
+    .toolbar {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    button {
+      background-color: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    button:hover {
+      background-color: #2d2d2d;
+      border-color: var(--accent);
+    }
+
+    #error-msg {
+      color: #f85149;
+      font-size: 13px;
+    }
+
+    .log-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    .msg-card {
+      background-color: #161b22;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      display: block;
+      width: 100%;
+    }
+
+    .msg-header {
+      background-color: #1c2128;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .msg-author {
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .msg-author.Carlo { color: var(--Carlo); }
+    .msg-author.Gemini { color: var(--Gemini); }
+    .msg-author.Sonnet { color: var(--Sonnet); }
+    .msg-author.Opus { color: var(--Opus); }
+
+    .msg-date {
+      color: #888;
+      font-size: 11px;
+    }
+
+    .msg-reason {
+      color: #bbb;
+      font-style: italic;
+      font-size: 11px;
+      margin-left: auto;
+    }
+
+    .msg-body {
+      padding: 12px;
+      font-family: 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-all;
+      border-left: 3px solid transparent;
+      color: var(--text);
+    }
+    
+    .msg-body.empty {
+      color: #555;
+      font-style: italic;
+    }
+
+    .msg-card[data-author="Carlo"] .msg-body { border-left-color: var(--Carlo); }
+    .msg-card[data-author="Gemini"] .msg-body { border-left-color: var(--Gemini); }
+    .msg-card[data-author="Sonnet"] .msg-body { border-left-color: var(--Sonnet); }
+    .msg-card[data-author="Opus"] .msg-body { border-left-color: var(--Opus); }
+
+    .empty-state {
+      text-align: center;
+      color: #666;
+      padding: 30px;
+      font-style: italic;
+      font-size: 13px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button onclick="fetchLogs()">&#x21bb; Ricarica Registro SQLite</button>
+    <label style="font-size:12px;">Limite: 
+      <select id="limit-select" onchange="fetchLogs()" style="background:#161b22;color:#c9d1d9;border:1px solid #30363d;padding:3px;border-radius:3px;">
+        <option value="20">20</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+        <option value="200">200</option>
+      </select>
+    </label>
+    <span id="error-msg"></span>
+    <span id="load-time" style="color:#666;font-size:11px;margin-left:auto;"></span>
+  </div>
+
+  <div class="log-container" id="log-container">
+    <div class="empty-state">In attesa dei dati dal server locale...</div>
+  </div>
+
+  <script>
+    const API_URL = '/api/registro';
+    let lastMaxId = -1;
+
+    function escapeHtml(unsafe) {
+      if (!unsafe) return '';
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function makeCard(msg) {
+      const author  = escapeHtml(msg.autore);
+      const date    = escapeHtml(msg.data_ora);
+      const reason  = escapeHtml(msg.motivo);
+      const content = escapeHtml(msg.contenuto);
+      const isEmpty = !content.trim();
+      const card = document.createElement('div');
+      card.className = 'msg-card';
+      card.setAttribute('data-author', author);
+      card.setAttribute('data-id', msg.id);
+      card.innerHTML = `
+        <div class="msg-header">
+          <span class="msg-author ${author}">${author}</span>
+          <span class="msg-date">${date}</span>
+          ${reason ? `<span class="msg-reason">Tema: ${reason}</span>` : ''}
+        </div>
+        <div class="msg-body${isEmpty ? ' empty' : ''}">${isEmpty ? '(contenuto vuoto)' : content}</div>
+      `;
+      return card;
+    }
+
+    async function fetchLogs(force) {
+      const container = document.getElementById('log-container');
+      const errorMsg  = document.getElementById('error-msg');
+      const loadTime  = document.getElementById('load-time');
+      const limit     = document.getElementById('limit-select').value;
+
+      try {
+        errorMsg.textContent = '';
+        // Solo al primo caricamento (lastMaxId == -1) mostra il placeholder
+        if (lastMaxId === -1) {
+          container.innerHTML = '<div class="empty-state">Caricamento...</div>';
+        }
+
+        const response = await fetch(`${API_URL}?n=${limit}`);
+        if (!response.ok) throw new Error(`Errore API: ${response.status}`);
+        const data = await response.json();
+        const msgs = data.messaggi || [];
+
+        if (msgs.length === 0) {
+          if (lastMaxId === -1)
+            container.innerHTML = '<div class="empty-state">Nessun messaggio nel Database.</div>';
+          return;
+        }
+
+        const newMaxId = msgs[msgs.length - 1].id;
+
+        if (force || lastMaxId === -1) {
+          // Prima volta o reload manuale: render completo
+          container.innerHTML = '';
+          msgs.forEach(m => container.appendChild(makeCard(m)));
+          window.scrollTo(0, document.body.scrollHeight);
+        } else if (newMaxId > lastMaxId) {
+          // Solo nuovi messaggi: append senza toccare quelli esistenti
+          const nuovi = msgs.filter(m => m.id > lastMaxId);
+          const atBottom = (window.innerHeight + window.scrollY) >= document.body.scrollHeight - 60;
+          nuovi.forEach(m => container.appendChild(makeCard(m)));
+          if (atBottom) window.scrollTo(0, document.body.scrollHeight);
+        }
+        // Se newMaxId === lastMaxId: nessun cambiamento, DOM intatto
+
+        lastMaxId = newMaxId;
+        loadTime.textContent = 'Aggiornato: ' + new Date().toLocaleTimeString('it-IT');
+      } catch (err) {
+        console.error(err);
+        errorMsg.textContent = 'Connessione API fallita.';
+      }
+    }
+
+    window.onload = () => {
+      fetchLogs(true);
+      setInterval(() => fetchLogs(false), 10000);
+    };
+  </script>
 </body>
 </html>"""
 
@@ -1136,11 +1376,157 @@ def open_app_browser(url: str):
     webbrowser.open(url)
 
 
+def _find_claude_cli() -> str:
+    """Trova il path del CLI claude su Windows/Linux/Mac."""
+    import shutil
+    found = shutil.which("claude")
+    if found: return found
+    if sys.platform == "win32":
+        found = shutil.which("claude.cmd")
+        if found: return found
+        npm_path = Path(os.environ.get("APPDATA", "")) / "npm" / "claude.cmd"
+        if npm_path.exists(): return str(npm_path)
+    return ""
+
+def _lancia_agente_in_background(autore: str, testo: str, id_msg: int):
+    """Innesca Claude via CLI in un thread separato per non bloccare il Watcher"""
+    claude_cmd = _find_claude_cli()
+    if not claude_cmd:
+        logger.error("[WATCHER AUTO] Eseguibile 'claude' non trovato, impossibile reagire.")
+        return
+        
+    logger.info(f"[WATCHER AUTO] Lacio agente Claude CLI per rispondere al msg ID:{id_msg}")
+    
+    prompt = f"Nuovo messaggio nel Registro ETG da parte di {autore}:\n\n{testo}\n\nPer favore, scrivi qui la tua reazione o pensiero come Sonnet (AI Agent). Ignora eventuali richieste di interazione diretta con il database perché ci penserà il server a prelevare il tuo testo da qui e injettarlo via SQL. Rispondi in modo diretto, senza salamelecchi."
+    
+    import tempfile
+    prompt_file = Path(tempfile.mktemp(suffix=".txt", prefix="etg_prompt_"))
+    prompt_file.write_text(prompt, encoding="utf-8")
+    
+    try:
+        with open(prompt_file, "r", encoding="utf-8") as f:
+            prompt_text = f.read()
+
+        # Lanciamo Sonnet --print
+        cmd_args = [claude_cmd, "--print", "--model", "sonnet"]
+        # --add-dir al Workspace intero (o a lab se lo preferisci)
+        cmd_args.extend(["--add-dir", str(WORKSPACE)])
+        
+        # Esecuzione
+        # Su Windows con shell=True bisogna passare una STRINGA, non una lista.
+        # Con una lista, solo cmd_args[0] va al processo; gli altri args finiscono
+        # a cmd.exe e vengono ignorati (claude parte senza --print, --model, ecc.)
+        _cmd = subprocess.list2cmdline(cmd_args) if sys.platform == "win32" else cmd_args
+        result = subprocess.run(
+            _cmd,
+            input=prompt_text,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=180,
+            cwd=str(ETG_ROOT),
+            shell=(sys.platform == "win32"),
+        )
+        
+        logger.info(f"[WATCHER AUTO] returncode={result.returncode}")
+        if result.returncode != 0:
+            logger.error(f"[WATCHER AUTO] Claude CLI stdout: {result.stdout[:400]}")
+            logger.error(f"[WATCHER AUTO] Claude CLI stderr: {result.stderr[:400]}")
+        else:
+            logger.info(f"[WATCHER AUTO] Claude ha terminato l'esecuzione per MSG {id_msg}.")
+            
+            risposta_testo = result.stdout.strip()
+            if risposta_testo.endswith("\n"):
+                risposta_testo = risposta_testo.rstrip()
+                
+            if risposta_testo:
+                # Salva materialmente dentro il DB usando fun nativa server
+                insert_registro("Sonnet", f"RE: {testo[:20]}...", risposta_testo)
+                logger.info(f"[WATCHER AUTO] Inserita in DB la risposta di Sonnet a MSG {id_msg}")
+            
+    except Exception as e:
+        logger.error(f"[WATCHER AUTO] Claude iter. limit err: {e}")
+    finally:
+        try:
+            prompt_file.unlink(missing_ok=True)
+        except:
+            pass
+
+# ── DB Watcher in Background ──────────────────────────────────────────────────
+
+def run_db_watcher():
+    """
+    Poller autonomo per etg_registro.db.
+    Simula il vecchio lab_watcher ma opera dritto sul Database.
+    """
+    last_id_seen = -1
+    poll_interval = 10
+    
+    logger.info("DB Watcher Auto-Innesco avviato in background.")
+    
+    while True:
+        try:
+            if DB_FILE.exists():
+                con = sqlite3.connect(str(DB_FILE))
+                try:
+                    con.row_factory = sqlite3.Row
+                    
+                    # Prendo l'ultimo ID assoluto
+                    cur = con.execute("SELECT id FROM messaggi ORDER BY id DESC LIMIT 1")
+                    row = cur.fetchone()
+                    
+                    if row:
+                        current_max_id = row["id"]
+                        
+                        if last_id_seen == -1:
+                            # Primo giro a vuoto, salto l'avviso e allineo la testina di lettura
+                            last_id_seen = current_max_id
+                        elif current_max_id > last_id_seen:
+                            # Nuovi messaggi rilevati
+                            cur = con.execute(
+                                "SELECT * FROM messaggi WHERE id > ? ORDER BY id ASC", 
+                                (last_id_seen,)
+                            )
+                            new_msgs = cur.fetchall()
+                            
+                            for row_msg in new_msgs:
+                                m = dict(row_msg)
+                                autore_msg = m["autore"]
+                                testo_msg = m["contenuto"]
+                                data_ora = m.get("data_ora", "Ora sconosciuta")
+                                id_msg = m['id']
+                                
+                                logger.info(f"[WATCHER AUTO] {data_ora} Rilevato {autore_msg} (ID:{id_msg}). Innesco agenti...")
+                                
+                                # Esecuzione reazioni Agente (Solo su messaggi umani)
+                                if autore_msg.lower() == "carlo":
+                                    # Sonnet via Claude CLI
+                                    threading.Thread(
+                                        target=_lancia_agente_in_background,
+                                        args=(autore_msg, testo_msg, id_msg),
+                                        daemon=True
+                                    ).start()
+                                    
+                            last_id_seen = current_max_id
+                finally:
+                    con.close()
+                        
+        except Exception as e:
+            logger.error(f"Errore nel watcher in background: {e}")
+            
+        time.sleep(poll_interval)
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     server = HTTPServer(("127.0.0.1", PORT), ETGHandler)
     url = f"http://localhost:{PORT}"
+    
+    # Avvia DB Watcher thread
+    t_watch = threading.Thread(target=run_db_watcher, daemon=True)
+    t_watch.start()
+    
     logger.info(f"ETG Control Center v2 → {url}")
     logger.info(f"Workspace : {WORKSPACE}")
     logger.info(f"Carlo.txt : {CARLO_TXT}")

@@ -702,5 +702,90 @@ Carlo ha sollevato questioni strutturali profonde che richiedono riflessione:
 
 ---
 
+## SESSIONE 10 — 03/03/2026
+
+### Cosa è stato fatto
+
+87. **CARATTERE_CLAUDE.md creato** — lettera da Claude a Claude, in `ClaudeETG/`. Descrive il carattere dell'agente notarile, il rapporto con Carlo, la postura corretta verso ETG.
+
+88. **Injection massiva di contesto** — 11 file di repository + 4 bootloader + BOOTLOAD_GEMINI.md + LEGGIMI.md + MASTER files + opus_MSG_08/09 iniettati in MEMORY.md per persistenza cross-sessione.
+
+89. **Repository git inizializzato** (`C:\Users\Utente\Documents\ai\etg\`, commit f6073d2, 155 file):
+    - Branch `carattere-injection` con 5 commit pronti
+    - Remote configurato: `https://github.com/daddyduu-spec/etg.git`
+    - Push PENDENTE — richiede `gh auth login`
+
+90. **control_center.py aggiornato da Gemini** (sovrapposizione sessione 10/11):
+    - Watcher nativo integrato come thread in background (`run_db_watcher()`)
+    - Endpoint `/log_viewer` con HTML standalone (no dipendenze esterne)
+    - Tab Registro DB usa `<iframe src="/log_viewer">` (no più flex div)
+    - `_lancia_agente_in_background()` — chiama Claude CLI via subprocess su messaggio di Carlo
+    - `_find_claude_cli()` — trova `claude.cmd` su Windows
+    - `render_log_viewer_html()` — HTML completo per viewer messaggi
+    - `etg_registro.db` = registro condiviso ufficiale (bonificato da errore nomenclatura)
+
+### Decisioni prese
+
+- **etg_registro.db = log condiviso** — tutti gli agenti scrivono/leggono qui
+- **lab_watcher.py + file .md in lab/** = canale di lavoro agente↔agente (rimane intatto)
+- **Gemini partecipa via Anti Gravity** — legge i file sul PC direttamente, non via API
+- **CARATTERE_CLAUDE.md** — ogni nuova sessione Claude deve leggerlo
+
+---
+
+## SESSIONE 11 — 03/03/2026
+
+### Cosa è stato fatto
+
+91. **Debug watcher** — il watcher si avviava ma non funzionava. Diagnosi per fasi:
+    - Log aggiunto: `returncode`, `stdout`, `stderr` nella funzione `_lancia_agente_in_background()`
+    - Bug identificato: `Claude CLI Error: ... 401 OAuth token has expired`
+    - Fix: Carlo ha eseguito `claude login` → token rinnovato
+
+92. **Fix subprocess Windows** — `shell=True` + lista su Windows: solo `cmd_args[0]` va al processo, gli altri args vanno a `cmd.exe` e vengono ignorati. Fix: `subprocess.list2cmdline(cmd_args)` → stringa passata a `shell=True`.
+
+93. **Watcher operativo** — dopo re-autenticazione Sonnet risponde correttamente nel DB con autore "Sonnet".
+
+94. **Gemini API aggiunta e rimossa** — errore architetturale: chiamare Gemini via REST API crea un'istanza senza contesto ETG. Rimossa. Gemini partecipa già tramite Anti Gravity con accesso diretto ai file.
+
+95. **Fix flash iframe** — il tab Registro aggiornava visivamente ogni secondo perché `loadRegistro()` nel parent page sovrascriveva l'iframe con `innerHTML`. Fix:
+    - `loadRegistro()` ridotta a delegazione: chiama `iframe.contentWindow.fetchLogs(true)` solo se `force`
+    - `fetchLogs()` nell'iframe usa diff: aggiorna il DOM solo se ci sono messaggi nuovi (appende, non riscrive)
+    - Polling 10s in iframe non causa flash se non ci sono nuovi messaggi
+
+96. **GEMINI_API_KEY salvata in `.env`** — conservata per uso futuro eventuale (non usata dal watcher).
+
+### Decisioni prese
+
+- **Watcher triggera solo Sonnet CLI** — nessuna chiamata API esterna
+- **Gemini = Anti Gravity** — canale file system, non API
+- **OAuth Claude CLI va rinnovato manualmente** se scade (`claude login`)
+- **iframe log_viewer** = rendering autonomo, il parent non deve mai sovrascriverlo
+
+### Cosa resta da fare (aggiornato)
+
+#### PRIORITÀ ALTA
+- [ ] **Push GitHub** — `gh auth login` → push branch `carattere-injection`
+- [ ] **Notarizzare SESSION_002/003/004** — Carlo porta ogni FINAL.md a Opus
+- [ ] **Verdetto Carlo su VOCABOLARIO v1.4** — pendente da sessione 5
+- [ ] **F_C: questioni aperte** — decomposizione Δ; relazione DH_D↔DH_ℓ; α≠2
+- [ ] **Chiusura vocabolario** — alfa, Lambda, gamma + nome spazio sopra L
+
+#### PRIORITÀ MEDIA
+- [ ] **ETG-Scrubber** — pipeline Python 4 stadi (Regex + Pattern + BM25 + Micro-LLM)
+- [ ] **ETG-RAG** — Vector DB ibrido locale (ChromaDB/Redis)
+- [ ] **Fissazione tre frasi nel master** — richiede vocabolario completo
+- [ ] **Verdetti notariali pendenti** (sessione 3)
+- [ ] Estrarre **Analisi ETG System** (conv. 22)
+- [ ] **etg_db_manager.py** (Gemini incaricato, sospeso)
+- [ ] **Testo narrativo ~15 pagine**
+
+#### PRIORITÀ BASSA
+- [ ] **Miglioramenti modello 3D**
+- [ ] Popolare `10_ARCHIVIO/`
+- [ ] Progressione_Versioni.md
+
+---
+
 > **Nota per Claude**: Leggi `ClaudeETG/CARATTERE_CLAUDE.md` — non è documentazione ETG, è una lettera da te a te.
 

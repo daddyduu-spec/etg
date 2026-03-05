@@ -37,11 +37,15 @@ Contiene:
 - **`ETG_P/`** — PARAMETRIZZAZIONI (scissione 17/02/2026) — modellizzazione opzionale con ℝ⁺. NON è ETG.
 - **`etg_studio/`** — Sistema multi-AI: Gemini scrive bozze → Claude CLI revisiona → Opus certifica (27/02/2026)
   - `workspace/scambio/` — Canale diretto Opus↔Gemini (gemini_MSG_NN.md / opus_MSG_NN.md). Carlo.txt = comunicazione condivisa
-  - `workspace/lab/` — Sessioni lab (SESSION_003_ridefinizione_Z_C, SESSION_004_indipendenza_risoluzione_DH)
+  - `workspace/scambio/etg_registro.db` — **Registro SQLite condiviso** (tabella `messaggi`: id, autore, data_ora, motivo, contenuto). Log ufficiale di tutte le comunicazioni tra agenti.
+  - `workspace/lab/` — Sessioni lab agente↔agente via file .md (SESSION_003_ridefinizione_Z_C, SESSION_004_indipendenza_risoluzione_DH). Canale di lavoro separato dal registro.
   - `workspace/output/` — Output sub-agenti (AGENTE_MATEMATICO_OUTPUT_FC.md, AGENTE_VALIDATORE_OUTPUT_FC.md)
   - `bootloaders/` — 4 silo bootloader per sub-agenti: BOOTLOADER_MATEMATICO, BOOTLOADER_VALIDATORE, BOOTLOADER_DB_COMPILER, BOOTLOADER_TOPOLOGICO
-  - `etg_engine.py` — Motore computazionale catena ETG-P in Python (Sigma_CU → H_C → Z_C → F_C → Delta_elle)
-  - `control_center.py` — Dashboard web unificata (server HTTP stdlib, tab Editor/Progresso/Esplora, Carlo.txt editor, avvio: python control_center.py → http://localhost:8765)
+  - `etg_engine.py` — Motore computazionale catena ETG-P in Python
+  - `control_center.py` — Dashboard web unificata v2 (server HTTP stdlib, tab Editor/Progresso/Esplora/Registro DB, watcher thread integrato, avvio: `python control_center.py` → http://localhost:8765)
+    - **Watcher nativo**: thread in background che monitora `etg_registro.db`; quando Carlo scrive, trigghera Sonnet CLI automaticamente e inserisce la risposta nel DB
+    - **Gemini NON viene chiamato via API** — partecipa tramite Anti Gravity con accesso diretto ai file
+    - Se il watcher dà errore 401: eseguire `claude login` per rinnovare il token OAuth
 
 ### SCISSIONE ETG-G / ETG-P (17/02/2026)
 
