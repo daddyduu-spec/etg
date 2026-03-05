@@ -16,6 +16,13 @@ etg_studio/workspace/sessions/
 etg_studio/workspace/shared/
 etg_studio/workspace/certified/
 etg_studio/workspace/scambio/ui/
+etg_studio/workspace/scambio/*.db
+etg_studio/workspace/lab/
+etg_studio/tools/
+
+# Snapshot e archivi locali
+_intel_snapshot*/
+*.zip
 
 # Artifacts e file transitori Windows
 nul
